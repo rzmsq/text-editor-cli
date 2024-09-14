@@ -55,7 +55,11 @@ void proccess_data(const int &connfd)
         if (!Read(connfd, buff, gMaxMsgSz))
             break;
 
-        std::string cmnd{buff};
+        std::stringstream ssBuff;
+        ssBuff << buff;
+
+        std::string cmnd;
+        getline(ssBuff, cmnd, ' ');
         if (cmnd == "read")
         {
             std::ifstream f;
@@ -63,20 +67,32 @@ void proccess_data(const int &connfd)
 
             std::stringstream data;
             data << f.rdbuf();
+            f.close();
             std::string bf{data.str()};
             Write(connfd, const_cast<char *>(bf.c_str()), gMaxMsgSz);
+            break;
         }
         else if (cmnd == "write")
         {
-            if (!Read(connfd, buff, gMaxMsgSz))
+            std::string data, parseData;
+            bool flg{false};
+            while (ssBuff >> data)
+            {
+                if (flg)
+                    parseData += data + ' ';
+                if (data == "-a")
+                    flg = true;
+            }
+            if (!flg)
                 break;
-            std::ofstream f;
-            f.open("../data.txt", std::ios_base::ate);
 
-            f << '\n' + buff;
+            std::ofstream f;
+            f.open("../data.txt", std::ios_base::app);
+
+            f << '\n' + parseData;
+            f.close();
             Write(connfd, "Success", gMaxMsgSz);
         }
-
         // Write(connfd, buff, gMaxMsgSz);
     }
 }
