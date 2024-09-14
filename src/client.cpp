@@ -25,14 +25,3 @@ int main(int argc, char const *argv[])
 
     return EXIT_SUCCESS;
 }
-
-// std::string cmnd{buff};
-// if (cmnd == "create")
-// {
-//     std::cout << "Enter name file: ";
-//     std::string name;
-//     std::ofstream f;
-
-//     getline(std::cin, name);
-//     f.open(name);
-// }

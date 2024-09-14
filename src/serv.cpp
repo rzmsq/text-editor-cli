@@ -1,10 +1,19 @@
 #include <signal.h>
 #include <fstream>
+#include <variant>
 #include <sstream>
 
 #include "../include/main.hpp"
 
 void proccess_data(const int &connfd);
+std::variant<std::string, int> parse(std::stringstream &ssBuff);
+
+namespace msgs
+{
+    char succ[]{"Success"};
+    char unk[]{"Unknown command. Enter -help for mote info"};
+    char failW[]{"Failed! Use command: write -a <text>\n"};
+}
 
 int main(int argc, char *argv[])
 {
@@ -70,29 +79,52 @@ void proccess_data(const int &connfd)
             f.close();
             std::string bf{data.str()};
             Write(connfd, const_cast<char *>(bf.c_str()), gMaxMsgSz);
-            break;
         }
         else if (cmnd == "write")
         {
-            std::string data, parseData;
-            bool flg{false};
-            while (ssBuff >> data)
+            auto parseData = parse(ssBuff);
+
+            if (std::holds_alternative<int>(parseData))
             {
-                if (flg)
-                    parseData += data + ' ';
-                if (data == "-a")
-                    flg = true;
+                Write(connfd, msgs::failW, gMaxMsgSz);
             }
-            if (!flg)
-                break;
+            else
+            {
+                std::ofstream f;
+                f.open("../data.txt", std::ios_base::app);
 
-            std::ofstream f;
-            f.open("../data.txt", std::ios_base::app);
-
-            f << '\n' + parseData;
-            f.close();
-            Write(connfd, "Success", gMaxMsgSz);
+                f << '\n' + std::get<std::string>(parseData);
+                f.close();
+                Write(connfd, msgs::succ, gMaxMsgSz);
+            }
+        }
+        else
+        {
+            Write(connfd, msgs::unk, gMaxMsgSz);
         }
         // Write(connfd, buff, gMaxMsgSz);
     }
+}
+
+std::variant<std::string, int> parse(std::stringstream &ssBuff)
+{
+    /*
+        The function parsing data for write to file
+        return data if success
+        return -1 for error parse
+    */
+
+    std::string data, parseData;
+    bool flg{false};
+    while (ssBuff >> data)
+    {
+        if (flg)
+            parseData += data + ' ';
+        if (data == "-a")
+            flg = true;
+    }
+    if (flg)
+        return std::variant<std::string, int>(parseData);
+    else
+        return std::variant<std::string, int>(-1);
 }
